@@ -62,6 +62,8 @@ build
 sdkconfig
 sdkconfig.old
 
+# Ignore ESP-IDF managed components
+managed_components
 
 # lock files for examples and components
 dependencies.lock
