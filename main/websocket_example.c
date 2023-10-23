@@ -32,7 +32,7 @@
 
 #define NO_DATA_TIMEOUT_SEC 5
 
-static const char *TAG = "websocket";
+static const char *TAG = "antenna_switch_client";
 
 static TimerHandle_t shutdown_signal_timer;
 static SemaphoreHandle_t shutdown_sema;
