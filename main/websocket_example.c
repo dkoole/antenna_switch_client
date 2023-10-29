@@ -158,6 +158,20 @@ bool is_valid_ip_address(const char *ipAddress)
     return result != 0;
 }
 
+/**
+ * Task that blinks a led to indicate something went wrong parsing the config file
+ */
+static void error_task()
+{
+    gpio_set_direction(LED_OUTPUT_PORT, GPIO_MODE_OUTPUT);
+    bool level = true;
+    while(true) {
+        gpio_set_level(LED_OUTPUT_PORT, level);
+        level = !level;
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+    }
+}
+
 void app_main(void)
 {
     ESP_LOGI(TAG, "[APP] Startup..");
@@ -172,7 +186,11 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    ESP_ERROR_CHECK(init_sd_card());
+    if(init_sd_card() != ESP_OK) {
+        xTaskCreate(error_task, "error_task", 1024 * 2, NULL, configMAX_PRIORITIES, NULL);
+        return;
+    }
+
     char *ip_address_str = NULL;
     char config_buf[1024];
     const char *file_config = MOUNT_POINT"/config.json";
