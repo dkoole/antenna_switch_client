@@ -90,17 +90,6 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
             }
         }
 
-        // If received data contains json structure it succeed to parse
-        // cJSON *root = cJSON_Parse(data->data_ptr);
-        // if (root) {
-        //     for (int i = 0 ; i < cJSON_GetArraySize(root) ; i++) {
-        //         cJSON *elem = cJSON_GetArrayItem(root, i);
-        //         cJSON *id = cJSON_GetObjectItem(elem, "id");
-        //         cJSON *name = cJSON_GetObjectItem(elem, "name");
-        //         ESP_LOGW(TAG, "Json={'id': '%s', 'name': '%s'}", id->valuestring, name->valuestring);
-        //     }
-        //     cJSON_Delete(root);
-        // }
         ESP_LOGW(TAG, "Total payload length=%d, data_len=%d, current payload offset=%d\r\n", data->payload_len, data->data_len, data->payload_offset);
 
         // xTimerReset(shutdown_signal_timer, portMAX_DELAY);
@@ -198,7 +187,7 @@ void app_main(void)
     cJSON *root = cJSON_Parse(config_buf);
     if(root) {
         ESP_LOGI(TAG, "Parsed config file");
-        cJSON *ip_adress_element = cJSON_GetObjectItem(root,"ip_address");
+        cJSON *ip_adress_element = cJSON_GetObjectItem(root,"server_address");
         if(ip_adress_element) {
             ip_address_str = ip_adress_element->valuestring;
             if(is_valid_ip_address(ip_address_str)) {
@@ -211,7 +200,8 @@ void app_main(void)
         } 
     } else {
             ESP_LOGE(TAG, "Could not parse config file");
-        }
+    }
+
 
     /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
      * Read "Establishing Wi-Fi or Ethernet Connection" section in

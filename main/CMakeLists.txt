@@ -1,2 +1,2 @@
-idf_component_register(SRCS "sdcard.c" "websocket_example.c"
+idf_component_register(SRCS "main.c" "sdcard.c"
                     INCLUDE_DIRS ".")
