@@ -15,7 +15,7 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <arpa/inet.h>
+// #include <arpa/inet.h>
 #include "esp_wifi.h"
 #include "esp_system.h"
 #include "nvs_flash.h"
@@ -30,9 +30,9 @@
 #include "esp_log.h"
 #include "esp_websocket_client.h"
 #include "esp_event.h"
-#include <cJSON.h>
 #include "driver/gpio.h"
 #include "sdcard.h"
+#include "config.h"
 
 // #define NO_DATA_TIMEOUT_SEC 100
 
@@ -114,8 +114,6 @@ static void websocket_app_start(const char *ip_address)
     // shutdown_signal_timer = xTimerCreate("Websocket shutdown timer", NO_DATA_TIMEOUT_SEC * 1000 / portTICK_PERIOD_MS,
     //                                      pdFALSE, NULL, shutdown_signaler);
     // shutdown_sema = xSemaphoreCreateBinary();
-
-    // websocket_cfg.uri = CONFIG_WEBSOCKET_URI;
     char uri[60];
     strcat(uri, "ws://");
     strcat(uri, ip_address);
@@ -138,13 +136,6 @@ static void websocket_app_start(const char *ip_address)
     //esp_websocket_client_close(client, portMAX_DELAY);
     //ESP_LOGI(TAG, "Websocket Stopped");
     //esp_websocket_client_destroy(client);
-}
-
-bool is_valid_ip_address(const char *ipAddress)
-{
-    struct sockaddr_in sa;
-    int result = inet_pton(AF_INET, ipAddress, &(sa.sin_addr));
-    return result != 0;
 }
 
 /**
@@ -180,28 +171,21 @@ void app_main(void)
         return;
     }
 
-    char *ip_address_str = NULL;
     char config_buf[1024];
-    const char *file_config = MOUNT_POINT"/config.json";
-    read_file(file_config, config_buf);
-    cJSON *root = cJSON_Parse(config_buf);
-    if(root) {
-        ESP_LOGI(TAG, "Parsed config file");
-        cJSON *ip_adress_element = cJSON_GetObjectItem(root,"server_address");
-        if(ip_adress_element) {
-            ip_address_str = ip_adress_element->valuestring;
-            if(is_valid_ip_address(ip_address_str)) {
-                ESP_LOGI(TAG, "Valid IP Address: %s", ip_address_str);    
-           } else {
-                    ESP_LOGE(TAG, "%s is not a valid IP Address", ip_address_str);
-            }
-        } else {
-                ESP_LOGE(TAG, "ip_address not found in config file");
-        } 
-    } else {
-            ESP_LOGE(TAG, "Could not parse config file");
+    if(read_file("config.json", config_buf) != ESP_OK) {
+        xTaskCreate(error_task, "error_task", 1024 * 2, NULL, configMAX_PRIORITIES, NULL);
+        return;
+    }
+    
+    Config myconfig = { .server_ip = {}, .use_wifi = false };
+    if(!parse_config(config_buf, &myconfig))
+    {
+        deinit_sd_card();
+        xTaskCreate(error_task, "error_task", 1024 * 2, NULL, configMAX_PRIORITIES, NULL);
+        return;
     }
 
+    deinit_sd_card();
 
     /* This helper function configures Wi-Fi or Ethernet, as selected in menuconfig.
      * Read "Establishing Wi-Fi or Ethernet Connection" section in
@@ -209,5 +193,5 @@ void app_main(void)
      */
     ESP_ERROR_CHECK(example_connect());
 
-    websocket_app_start(ip_address_str);
+    websocket_app_start(myconfig.server_ip);
 }

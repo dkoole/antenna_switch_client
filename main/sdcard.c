@@ -7,7 +7,11 @@
 
 static const char *TAG = "sd card";
 
-#define MOUNT_POINT "/sdcard"
+static const char *mount_point = "/sdcard";
+
+static sdmmc_card_t *card = NULL;
+static sdmmc_host_t host = SDSPI_HOST_DEFAULT();
+
 #define EXAMPLE_MAX_CHAR_SIZE    64
 
 // Pin assignments can be set in menuconfig, see "SD Card Configuration" menu.
@@ -26,25 +30,8 @@ esp_err_t init_sd_card()
         .allocation_unit_size = 16 * 1024
     };
 
-    // Options for mounting the filesystem.
-    // If format_if_mount_failed is set to true, SD card will be partitioned and
-    // formatted in case when mounting fails.
-    sdmmc_card_t *card;
-    // sdspi_device_config_t
-    // sdspi_device_config_t slot_config;
-    const char mount_point[] = MOUNT_POINT;
     ESP_LOGI(TAG, "Initializing SD card");
-
-    // Use settings defined above to initialize SD card and mount FAT filesystem.
-    // Note: esp_vfs_fat_sdmmc/sdspi_mount is all-in-one convenience functions.
-    // Please check its source code and implement error recovery when developing
-    // production applications.
     ESP_LOGI(TAG, "Using SPI peripheral");
-
-    // By default, SD card frequency is initialized to SDMMC_FREQ_DEFAULT (20MHz)
-    // For setting a specific frequency, use host.max_freq_khz (range 400kHz - 20MHz for SDSPI)
-    // Example: for fixed frequency of 10MHz, use host.max_freq_khz = 10000;
-    sdmmc_host_t host = SDSPI_HOST_DEFAULT();
     host.max_freq_khz = 10000;
 
     spi_bus_config_t bus_cfg = {
@@ -89,10 +76,29 @@ esp_err_t init_sd_card()
     return ESP_OK;
 }
 
-esp_err_t read_file(const char *path, char *buf)
+/**
+ * Deinitialize SD Card. Unmount it and deinitialize the SPI bus
+*/
+esp_err_t deinit_sd_card()
 {
-    ESP_LOGI(TAG, "Reading file %s", path);
-    FILE *f = fopen(path, "r");
+    esp_vfs_fat_sdcard_unmount(mount_point, card);
+    ESP_LOGI(TAG, "Card unmounted");
+
+    spi_bus_free(host.slot);
+    ESP_LOGI(TAG, "Deinitialized SPI Bus");
+    
+    return ESP_OK;
+}
+
+esp_err_t read_file(const char *file_name, char *buf)
+{
+    char full_path[60] = {};
+    strcat(full_path, mount_point);
+    strcat(full_path, "/");
+    strcat(full_path, file_name);
+    ESP_LOGI(TAG, "Reading file %s", full_path);
+
+    FILE *f = fopen(full_path, "r");
     if (f == NULL) {
         ESP_LOGE(TAG, "Failed to open file for reading");
         return ESP_FAIL;
