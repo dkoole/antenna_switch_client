@@ -38,3 +38,33 @@ menu "Switch Configuration"
         int "ANT6 LED GPIO number"
 
 endmenu
+
+menu "W5500 Ethernet configuration"
+
+    config ETHERNET_SPI_HOST
+        int "SPI Host"
+        default 1
+
+    config ETHERNET_SPI_MISO_GPIO
+        int "MISO GPIO PIN"
+    
+    config ETHERNET_SPI_MOSI_GPIO
+        int "MOSI GPIO PIN"
+
+    config ETHERNET_SPI_SCLK_GPIO
+        int "CLK GPIO PIN"
+
+    config ETHERNET_SPI_CS
+        int "CS GPIO PIN"
+    
+    config ETHERNET_SPI_INTERRUPT
+        int "INTERRUPT GPIO PIN"
+
+    config ETHERNET_SPI_PHY_RESET
+        int "INTERRUPT GPIO PIN"
+        default -1
+
+    config ETHERNET_SPI_PHY_ADDRESS
+        int "PHY ADDRESS"
+        default 1
+endmenu

@@ -38,11 +38,9 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
             ESP_LOGI(TAG, "Received Pong frame");
         } else {
             ESP_LOGW(TAG, "Received=%.*s", data->data_len, (char *)data->data_ptr);
-            if(strncmp(data->data_ptr, "ant4", data->data_len) == 0) {
-                ESP_LOGI(TAG, "Enabling LED");
-                //gpio_set_level(LED_OUTPUT_PORT, 1);
-            } else {
-                //gpio_set_level(LED_OUTPUT_PORT, 0);
+            int result  = atoi((const char*)data->data_ptr);
+            if(result != 0) {
+                // select_antenna(result);
             }
         }
 

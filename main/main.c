@@ -31,10 +31,42 @@
 #include "sdcard.h"
 #include "config.h"
 #include "websocket_client.h"
+#include "ethernet_init.h"
 
 static const char *TAG = "antenna_switch_client";
 
 #define CONFIG_FILE "config.json"
+
+#define NUMBER_OF_ANTENNA 6
+
+static int ant_led_gpio[NUMBER_OF_ANTENNA] = {CONFIG_ANT1_PIN_LED, CONFIG_ANT2_PIN_LED, CONFIG_ANT3_PIN_LED, CONFIG_ANT4_PIN_LED, CONFIG_ANT5_PIN_LED, CONFIG_ANT6_PIN_LED};
+
+void init_leds()
+{
+    for(unsigned int i = 0; i < NUMBER_OF_ANTENNA; i++)
+    {
+        gpio_set_direction(ant_led_gpio[i], GPIO_MODE_OUTPUT);
+    }
+    gpio_set_direction(CONFIG_AUTOMODE_PIN_LED, GPIO_MODE_OUTPUT);
+}
+
+void disable_all_antenna_leds()
+{
+    for(unsigned int i = 0; i < NUMBER_OF_ANTENNA; i++)
+    {
+        gpio_set_level(ant_led_gpio[i], false);
+    }
+}
+
+void select_antenna(unsigned int antenna)
+{
+    if(antenna >= 1 && antenna <= NUMBER_OF_ANTENNA) {
+        disable_all_antenna_leds();
+        gpio_set_level(ant_led_gpio[antenna - 1], true);
+    } else {
+        ESP_LOGE(TAG, "select_antenna invalid antenna number: %u", antenna);
+    }
+}
 
 /**
  * Task that blinks a led to indicate something went wrong parsing the config file
@@ -63,13 +95,7 @@ void app_main(void)
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    gpio_set_direction(CONFIG_AUTOMODE_PIN_LED, GPIO_MODE_OUTPUT);
-    gpio_set_direction(CONFIG_ANT1_PIN_LED, GPIO_MODE_OUTPUT);
-    gpio_set_direction(CONFIG_ANT2_PIN_LED, GPIO_MODE_OUTPUT);
-    gpio_set_direction(CONFIG_ANT3_PIN_LED, GPIO_MODE_OUTPUT);
-    gpio_set_direction(CONFIG_ANT4_PIN_LED, GPIO_MODE_OUTPUT);
-    gpio_set_direction(CONFIG_ANT5_PIN_LED, GPIO_MODE_OUTPUT);
-    gpio_set_direction(CONFIG_ANT6_PIN_LED, GPIO_MODE_OUTPUT);
+    init_leds();
 
     if(init_sd_card() != ESP_OK) {
         xTaskCreate(error_task, "error_task", 1024 * 2, NULL, configMAX_PRIORITIES, NULL);
@@ -96,7 +122,19 @@ void app_main(void)
      * Read "Establishing Wi-Fi or Ethernet Connection" section in
      * examples/protocols/README.md for more information about this function.
      */
-    ESP_ERROR_CHECK(example_connect());
+    // ESP_ERROR_CHECK(example_connect());
+
+    // if(myconfig.use_wifi) {
+    //     // connect_wifi();
+    // } else {
+        // ESP_LOGI(TAG, "Ethernet connection not yet supported");
+
+    ethernet_init();
+    
+    // // Create default event loop that running in background
+    // ESP_ERROR_CHECK(esp_event_loop_create_default());
+
+    // }
 
     websocket_client_connect(myconfig.server_ip);
 }
