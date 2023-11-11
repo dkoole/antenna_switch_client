@@ -32,41 +32,11 @@
 #include "config.h"
 #include "websocket_client.h"
 #include "ethernet_init.h"
+#include "antenna_control.h"
 
 static const char *TAG = "antenna_switch_client";
 
 #define CONFIG_FILE "config.json"
-
-#define NUMBER_OF_ANTENNA 6
-
-static int ant_led_gpio[NUMBER_OF_ANTENNA] = {CONFIG_ANT1_PIN_LED, CONFIG_ANT2_PIN_LED, CONFIG_ANT3_PIN_LED, CONFIG_ANT4_PIN_LED, CONFIG_ANT5_PIN_LED, CONFIG_ANT6_PIN_LED};
-
-void init_leds()
-{
-    for(unsigned int i = 0; i < NUMBER_OF_ANTENNA; i++)
-    {
-        gpio_set_direction(ant_led_gpio[i], GPIO_MODE_OUTPUT);
-    }
-    gpio_set_direction(CONFIG_AUTOMODE_PIN_LED, GPIO_MODE_OUTPUT);
-}
-
-void disable_all_antenna_leds()
-{
-    for(unsigned int i = 0; i < NUMBER_OF_ANTENNA; i++)
-    {
-        gpio_set_level(ant_led_gpio[i], false);
-    }
-}
-
-void select_antenna(unsigned int antenna)
-{
-    if(antenna >= 1 && antenna <= NUMBER_OF_ANTENNA) {
-        disable_all_antenna_leds();
-        gpio_set_level(ant_led_gpio[antenna - 1], true);
-    } else {
-        ESP_LOGE(TAG, "select_antenna invalid antenna number: %u", antenna);
-    }
-}
 
 /**
  * Task that blinks a led to indicate something went wrong parsing the config file
@@ -91,11 +61,19 @@ void app_main(void)
     esp_log_level_set("transport_ws", ESP_LOG_DEBUG);
     esp_log_level_set("trans_tcp", ESP_LOG_DEBUG);
 
-    ESP_ERROR_CHECK(nvs_flash_init());
+    esp_err_t err = nvs_flash_init();
+    if (err == ESP_ERR_NVS_NO_FREE_PAGES || err == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+        // NVS partition was truncated and needs to be erased
+        // Retry nvs_flash_init
+        ESP_ERROR_CHECK(nvs_flash_erase());
+        err = nvs_flash_init();
+    }
+    ESP_ERROR_CHECK( err );
+    
     ESP_ERROR_CHECK(esp_netif_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
 
-    init_leds();
+    init_antenna_control();
 
     if(init_sd_card() != ESP_OK) {
         xTaskCreate(error_task, "error_task", 1024 * 2, NULL, configMAX_PRIORITIES, NULL);

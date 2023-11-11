@@ -37,6 +37,10 @@ menu "Switch Configuration"
     config ANT6_PIN_LED
         int "ANT6 LED GPIO number"
 
+    config AUTOMODE_BUTTON_GPIO
+        int "AUTOMODE Button GPIO"
+        default 21
+
 endmenu
 
 menu "W5500 Ethernet configuration"
