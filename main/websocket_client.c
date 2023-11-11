@@ -3,8 +3,13 @@
 #include <esp_log.h>
 #include <esp_websocket_client.h>
 #include <esp_event.h>
+#include "antenna_control.h"
 
 static const char *TAG = "websocket client";
+
+static const char* request_current_antenna_command = "current_antenna";
+
+static esp_websocket_client_handle_t client = NULL;
 
 static void log_error_if_nonzero(const char *message, int error_code)
 {
@@ -19,6 +24,8 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
     switch (event_id) {
     case WEBSOCKET_EVENT_CONNECTED:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_CONNECTED");
+        client = (esp_websocket_client_handle_t)handler_args;
+        esp_websocket_client_send_text(client, request_current_antenna_command, strlen(request_current_antenna_command), portMAX_DELAY);
         break;
     case WEBSOCKET_EVENT_DISCONNECTED:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_DISCONNECTED");
@@ -28,6 +35,7 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
             log_error_if_nonzero("reported from tls stack", data->error_handle.esp_tls_stack_err);
             log_error_if_nonzero("captured as transport's socket errno",  data->error_handle.esp_transport_sock_errno);
         }
+        client = NULL;
         break;
     case WEBSOCKET_EVENT_DATA:
         ESP_LOGI(TAG, "WEBSOCKET_EVENT_DATA");
@@ -40,7 +48,7 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
             ESP_LOGW(TAG, "Received=%.*s", data->data_len, (char *)data->data_ptr);
             int result  = atoi((const char*)data->data_ptr);
             if(result != 0) {
-                // select_antenna(result);
+                select_antenna(result);
             }
         }
 
@@ -58,6 +66,16 @@ static void websocket_event_handler(void *handler_args, esp_event_base_t base, i
         }
         break;
     }
+}
+
+void send_current_antenna(unsigned int antenna)
+{
+    if(client == NULL) {
+        return;
+    } 
+    char buf[3];
+    itoa(antenna, buf, 10);
+    esp_websocket_client_send_text(client, buf, strlen(request_current_antenna_command), portMAX_DELAY);
 }
 
 void websocket_client_connect(const char* server_ip)

@@ -232,9 +232,6 @@ void ethernet_init()
     esp_eth_handle_t *eth_handles;
     ethernet_w5500_init(&eth_handles, &eth_port_cnt);
 
-    // Initialize TCP/IP network interface aka the esp-netif (should be called only once in application)
-    ESP_ERROR_CHECK(esp_netif_init());
-
     esp_netif_config_t cfg = ESP_NETIF_DEFAULT_ETH();
     esp_netif_t *eth_netif = esp_netif_new(&cfg);
     
