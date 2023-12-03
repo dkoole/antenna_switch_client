@@ -137,7 +137,6 @@ static void automode_control_task()
                 if((active_band != previous_band) && active_band != UNKNOWN) {
                     esp_err_t err = nvs_get_u8(my_nvs_handle, AmateurBandStr[active_band], &antenna_number);
                     if(err == ESP_OK) {
-                        disable_all_antenna_leds();
                         send_current_antenna(antenna_number);
                     }
                 }
@@ -230,7 +229,6 @@ static void antenna_button_task()
                         &ulNotifiedValue, /* Notified value pass out in ulNotifiedValue. */
                         portMAX_DELAY ); /* Block indefinitely. */
         if(!automode_enabled) {
-            // disable_all_antenna_leds();
             send_current_antenna(ulNotifiedValue);
         }
     }
