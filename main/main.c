@@ -33,6 +33,7 @@
 #include "websocket_client.h"
 #include "ethernet_init.h"
 #include "antenna_control.h"
+#include "kenwood_band_decoder.h"
 
 static const char *TAG = "antenna_switch_client";
 
@@ -113,6 +114,8 @@ void app_main(void)
     // ESP_ERROR_CHECK(esp_event_loop_create_default());
 
     // }
+
+    init_band_decoder();
 
     websocket_client_connect(myconfig.server_ip);
 }

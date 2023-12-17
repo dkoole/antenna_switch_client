@@ -2,7 +2,6 @@
 #include "esp_system.h"
 #include "esp_log.h"
 #include "iot_button.h"
-#include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "freertos/semphr.h"
 #include "websocket_client.h"
@@ -24,7 +23,7 @@ static uint8_t ant4_value = 4;
 static uint8_t ant5_value = 5;
 static uint8_t ant6_value = 6;
 static SemaphoreHandle_t automodeSemaphore = NULL;
-static QueueHandle_t qrg_queue;
+QueueHandle_t qrg_queue;
 static nvs_handle_t my_nvs_handle;
 
 enum AmateurBand 
@@ -130,8 +129,10 @@ static void automode_control_task()
     int qrg = 0;
     for(;;) {
         if (xQueueReceive(qrg_queue, (void *)&qrg_str, (TickType_t)portMAX_DELAY)) {
+            ESP_LOGD(TAG, "Received qrg: %s", qrg_str);
             if(automode_enabled) {
                 qrg = atoi(qrg_str);
+                ESP_LOGD(TAG, "QRG number: %d", qrg);
                 previous_band = active_band;
                 active_band = hz_to_amateur_band(qrg);
                 if((active_band != previous_band) && active_band != UNKNOWN) {
@@ -355,8 +356,12 @@ void init_antenna_control()
         ESP_LOGE(TAG, "Could not initialize NVS handle!: (%s)", esp_err_to_name(err));
     }
 
+    qrg_queue = xQueueCreate(5, 11);
+
     init_leds();
     disable_all_antenna_leds();
     init_automode_button();
     init_antenna_buttons();
+    
+    xTaskCreate(automode_control_task, "automode_task", 2048, NULL, 12, NULL);
 }

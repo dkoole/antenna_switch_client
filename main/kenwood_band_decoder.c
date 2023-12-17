@@ -4,11 +4,12 @@
 #include "driver/uart.h"
 #include "esp_log.h"
 #include "string.h"
+#include "antenna_control.h"
 
 static const char *TAG = "band_decoder";
 
 #define COMMAND "IF;"
-#define EX_UART_NUM UART_NUM_0
+#define EX_UART_NUM UART_NUM_2
 #define PATTERN_CHR_NUM    (1)
 
 #define RX_BUF_SIZE (1024)
@@ -18,16 +19,18 @@ static QueueHandle_t uart0_queue;
 static int send_data(const char* data)
 {
     const int len = strlen(data);
-    const int txBytes = uart_write_bytes(UART_NUM_1, data, len);
-    ESP_LOGI(TAG, "Wrote %d bytes", txBytes);
+    const int txBytes = uart_write_bytes(EX_UART_NUM, data, len);
+    // ESP_LOGI(TAG, "Wrote %s bytes", data);
     return txBytes;
 }
 
 static void tx_task(void *arg)
 {
+    // const int len = strlen(COMMAND);
     while (1) {
         send_data(COMMAND);
-        vTaskDelay(500 / portTICK_PERIOD_MS);
+        // uart_write_bytes(EX_UART_NUM, COMMAND, len);
+        vTaskDelay(250 / portTICK_PERIOD_MS);
     }
 }
 
@@ -50,7 +53,8 @@ static void rx_task(void *pvParameters)
                 ESP_LOGI(TAG, "[UART DATA]: %d", event.size);
                 uart_read_bytes(EX_UART_NUM, dtmp, event.size, portMAX_DELAY);
                 ESP_LOGI(TAG, "[DATA EVT]:");
-                uart_write_bytes(EX_UART_NUM, (const char*) dtmp, event.size);
+                // ESP_LOGI(TAG, "Received data: %s", (const char*)dtmp);
+                // uart_write_bytes(EX_UART_NUM, (const char*) dtmp, event.size);
                 break;
             //Event of HW FIFO overflow detected
             case UART_FIFO_OVF:
@@ -98,6 +102,7 @@ static void rx_task(void *pvParameters)
                     uart_read_bytes(EX_UART_NUM, pat, PATTERN_CHR_NUM, 100 / portTICK_PERIOD_MS);
                     ESP_LOGI(TAG, "read data: %s", dtmp);
                     ESP_LOGI(TAG, "read pat : %s", pat);
+                    xQueueSend(qrg_queue, &dtmp[2], 0);
                 }
                 break;
             //Others
@@ -126,17 +131,18 @@ void init_band_decoder()
     //Install UART driver, and get the queue.
     uart_driver_install(EX_UART_NUM, RX_BUF_SIZE * 2, 0, 20, &uart0_queue, 0);
     uart_param_config(EX_UART_NUM, &uart_config);
+    ESP_ERROR_CHECK(uart_set_pin(EX_UART_NUM, 16, 4, 32, 33));
 
     //Set UART log level
     esp_log_level_set(TAG, ESP_LOG_INFO);
     //Set UART pins (using UART0 default pins ie no changes.)
-    uart_set_pin(EX_UART_NUM, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
+    // uart_set_pin(EX_UART_NUM, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE, UART_PIN_NO_CHANGE);
 
     //Set uart pattern detect function.
-    uart_enable_pattern_det_baud_intr(EX_UART_NUM, ';', PATTERN_CHR_NUM, 12, 0, 0);
+    uart_enable_pattern_det_baud_intr(EX_UART_NUM, ';', PATTERN_CHR_NUM, 20, 0, 0);
     
     //Reset the pattern queue length to record at most 1 pattern positions.
-    uart_pattern_queue_reset(EX_UART_NUM, 1);
+    uart_pattern_queue_reset(EX_UART_NUM, 5);
 
     //Create a task to handler UART event from ISR
     xTaskCreate(rx_task, "rx_task", 2048, NULL, 12, NULL);
